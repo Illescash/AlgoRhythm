@@ -3,14 +3,31 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+.pnp
+.pnp.js
+
+# Build
 dist
 dist-ssr
 *.local
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage/
+
+# Caches
+.eslintcache
+.stylelintcache
+node_modules/.cache
 
 # Editor directories and files
 .vscode/*

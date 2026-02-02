@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
 import { Visualizer } from './components/visualizer/Visualizer';
-import { initTerminalBridge } from './core/terminalBridge';
 import { initWorkerBridge } from './core/workerBridge';
 import { eventBus } from './core/eventBus';
 
@@ -9,9 +8,6 @@ function App() {
   const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
-    // Inicializar puentes
-    initTerminalBridge();
-
     // Inicializar Web Worker
     const worker = new Worker(new URL('./workers/algorithm.worker.ts', import.meta.url), {
       type: 'module'
