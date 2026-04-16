@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
-import { Visualizer } from './components/visualizer/Visualizer';
+import { Visualizer } from './engine/visual/Visualizer';
 import { initWorkerBridge } from './core/workerBridge';
 import { eventBus } from './core/eventBus';
 

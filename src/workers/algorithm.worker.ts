@@ -1,35 +1,17 @@
 import { createDataProxy } from './dataProxy';
 
-/**
- * Web Worker para ejecutar algoritmos de ordenación.
- * 
- * Usa un Proxy (dataProxy.ts) para interceptar accesos al array y emitir
- * eventos COMPARE/SWAP sin modificar la lógica de los algoritmos.
- */
+import { selectionSort } from './algorithms/selectionSort';
 
-/**
- * Selection Sort con delays para visualización.
- */
-async function selectionSort(array: number[]) {
-    const n = array.length;
+// Constantes de tiempo para las animaciones
+const tiempoCMP: number = 10;
+const tiempoSWAP: number = tiempoCMP * 5;
 
-    for (let i = 0; i < n - 1; i++) {
-        let minIdx = i;
+// Función genérica de sleep
+export const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-        for (let j = i + 1; j < n; j++) {
-            if (array[j] < array[minIdx]) {
-                minIdx = j;
-            }
-
-            await new Promise(r => setTimeout(r, .1));
-        }
-
-        if (minIdx !== i) {
-            [array[i], array[minIdx]] = [array[minIdx], array[i]];
-            await new Promise(r => setTimeout(r, .1));
-        }
-    }
-}
+// Funciones específicas para comparaciones y swaps
+export const sleepCMP = () => sleep(tiempoCMP);
+export const sleepSWAP = () => sleep(tiempoSWAP);
 
 /**
  * Punto de entrada del Worker.
