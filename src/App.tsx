@@ -3,6 +3,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { Visualizer } from './engine/visual/Visualizer';
 import { initWorkerBridge } from './core/workerBridge';
 import { eventBus } from './core/eventBus';
+import { audioEngine } from './engine/audio/AudioEngine';
 
 function App() {
   const workerRef = useRef<Worker | null>(null);
@@ -22,13 +23,13 @@ function App() {
 
   const startSort = () => {
     if (workerRef.current) {
-      // Generar datos aleatorios únicos para ambos
       const randomData = Array.from({ length: 50 }, () => Math.floor(Math.random() * 90) + 10);
 
-      // 1. Sincronizar el visualizador primero
-      eventBus.emit({ type: 'INITIALIZE', data: randomData });
+      // Init audio on user gesture (browser AudioContext policy requires this)
+      audioEngine.init(randomData);
 
-      // 2. Iniciar el worker con los MISMOS datos
+      // Sync visualizer and worker with the same data
+      eventBus.emit({ type: 'INITIALIZE', data: randomData });
       workerRef.current.postMessage({ type: 'START', data: [...randomData] });
     }
   };

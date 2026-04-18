@@ -3,7 +3,7 @@ import { createDataProxy } from './dataProxy';
 import { selectionSort } from './algorithms/selectionSort';
 
 // Constantes de tiempo para las animaciones
-const tiempoCMP: number = 10;
+const tiempoCMP: number = 50;
 const tiempoSWAP: number = tiempoCMP * 5;
 
 // Función genérica de sleep
@@ -21,5 +21,6 @@ self.onmessage = async (e: MessageEvent<{ type: 'START', data: number[] }>) => {
         const data = e.data.data;
         const proxiedData = createDataProxy(data);
         await selectionSort(proxiedData);
+        self.postMessage({ type: 'DONE' });
     }
 };

@@ -1,7 +1,8 @@
 export type VisualEvent =
     | { type: 'SWAP'; indices: [number, number] }    // Intercambio de dos posiciones
     | { type: 'COMPARE'; indices: [number, number] } // Comparación de dos posiciones
-    | { type: 'INITIALIZE'; data?: number[] };       // Carga inicial de datos
+    | { type: 'INITIALIZE'; data?: number[] }        // Carga inicial de datos
+    | { type: 'DONE' };                              // Algoritmo finalizado
 
 class EventBus {
     private listeners: ((event: VisualEvent) => void)[] = [];
