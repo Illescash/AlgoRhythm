@@ -27,11 +27,11 @@ class AudioEngine {
     private masterGain: GainNode | null = null;
     private unsubscribe: (() => void) | null = null;
 
-    // Local mirror of the array - needed to know element VALUES at each index
     private arrayData: number[] = [];
     private dataMin = 10;
     private dataMax = 100;
     private enabled = false;
+    private waveform: OscillatorType = 'sine';
 
     // Called on user gesture (button click) - creates AudioContext and subscribes
     init(data: number[]) {
@@ -70,15 +70,13 @@ class AudioEngine {
                 break;
 
             case 'COMPARE':
-                // Short sine grains - COMPAREs fuse into texture at 10ms, that's correct behavior
-                this.playGrain(event.indices[0], 0.018, 'sine', 0.5);
-                this.playGrain(event.indices[1], 0.018, 'sine', 0.5);
+                this.playGrain(event.indices[0], 0.018, this.waveform, 0.5);
+                this.playGrain(event.indices[1], 0.018, this.waveform, 0.5);
                 break;
 
             case 'SET':
-                // Mirror the write so pitch stays in sync with visual state
                 this.arrayData[event.index] = event.value;
-                this.playGrain(event.index, 0.06, 'triangle', 1.0);
+                this.playGrain(event.index, 0.06, this.waveform, 1.0);
                 break;
 
             case 'DONE':
@@ -200,6 +198,10 @@ class AudioEngine {
             osc.stop(now + 0.5);
             osc.onended = () => { osc.disconnect(); gain.disconnect(); };
         });
+    }
+
+    setWaveform(type: OscillatorType) {
+        this.waveform = type;
     }
 
     setVolume(value: number) {
