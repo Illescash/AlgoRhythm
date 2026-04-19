@@ -1,26 +1,24 @@
 import { createDataProxy } from './dataProxy';
+import type { SortingAlgorithm } from './algorithms/types';
+import { selectionSortAlgorithm } from './algorithms/selectionSort';
+import { quickSortAlgorithm } from './algorithms/quickSort';
+import { mergeSortAlgorithm } from './algorithms/mergeSort';
+import { mergeSortInPlaceAlgorithm } from './algorithms/mergeSortInPlace';
 
-import { selectionSort } from './algorithms/selectionSort';
+const ALGORITHMS: Record<string, SortingAlgorithm> = {
+    selectionSort: selectionSortAlgorithm,
+    quickSort: quickSortAlgorithm,
+    mergeSort: mergeSortAlgorithm,
+    mergeSortInPlace: mergeSortInPlaceAlgorithm,
+};
 
-// Constantes de tiempo para las animaciones
-const tiempoCMP: number = 50;
-const tiempoSWAP: number = tiempoCMP * 5;
+const DEFAULT_ALGORITHM = 'quickSort';
 
-// Función genérica de sleep
-export const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-// Funciones específicas para comparaciones y swaps
-export const sleepCMP = () => sleep(tiempoCMP);
-export const sleepSWAP = () => sleep(tiempoSWAP);
-
-/**
- * Punto de entrada del Worker.
- */
-self.onmessage = async (e: MessageEvent<{ type: 'START', data: number[] }>) => {
+self.onmessage = async (e: MessageEvent<{ type: 'START'; data: number[]; algorithm?: string }>) => {
     if (e.data.type === 'START') {
-        const data = e.data.data;
-        const proxiedData = createDataProxy(data);
-        await selectionSort(proxiedData);
+        const algorithm = ALGORITHMS[e.data.algorithm ?? DEFAULT_ALGORITHM] ?? ALGORITHMS[DEFAULT_ALGORITHM];
+        const proxiedData = createDataProxy(e.data.data);
+        await algorithm.sort(proxiedData);
         self.postMessage({ type: 'DONE' });
     }
 };

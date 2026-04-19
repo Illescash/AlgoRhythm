@@ -1,9 +1,12 @@
-import { sleepCMP, sleepSWAP } from '../algorithm.worker';
+import { sleepCMP, sleepWRITE } from '../sleep';
+import type { SortingAlgorithm } from './types';
 
-/**
- * Selection Sort con delays para visualización.
- */
-export async function selectionSort(array: number[]) {
+export const selectionSortAlgorithm: SortingAlgorithm = {
+    name: 'Selection Sort',
+    sort: selectionSort,
+};
+
+async function selectionSort(array: number[]) {
     const n = array.length;
 
     for (let i = 0; i < n - 1; i++) {
@@ -19,7 +22,7 @@ export async function selectionSort(array: number[]) {
 
         if (minIdx !== i) {
             [array[i], array[minIdx]] = [array[minIdx], array[i]];
-            await sleepSWAP();
+            await sleepWRITE();
         }
     }
 }

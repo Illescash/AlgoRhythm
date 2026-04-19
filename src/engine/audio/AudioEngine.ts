@@ -75,13 +75,10 @@ class AudioEngine {
                 this.playGrain(event.indices[1], 0.018, 'sine', 0.5);
                 break;
 
-            case 'SWAP':
-                // Mirror the swap in local array so pitch stays in sync with visual state
-                [this.arrayData[event.indices[0]], this.arrayData[event.indices[1]]] =
-                    [this.arrayData[event.indices[1]], this.arrayData[event.indices[0]]];
-                // Longer triangle grains - SWAPs at 50ms are individually perceptible
-                this.playGrain(event.indices[0], 0.06, 'triangle', 1.0);
-                this.playGrain(event.indices[1], 0.06, 'triangle', 1.0);
+            case 'SET':
+                // Mirror the write so pitch stays in sync with visual state
+                this.arrayData[event.index] = event.value;
+                this.playGrain(event.index, 0.06, 'triangle', 1.0);
                 break;
 
             case 'DONE':

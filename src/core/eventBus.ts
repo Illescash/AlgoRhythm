@@ -1,5 +1,5 @@
 export type VisualEvent =
-    | { type: 'SWAP'; indices: [number, number] }    // Intercambio de dos posiciones
+    | { type: 'SET'; index: number; value: number }  // Escritura individual al array
     | { type: 'COMPARE'; indices: [number, number] } // Comparación de dos posiciones
     | { type: 'INITIALIZE'; data?: number[] }        // Carga inicial de datos
     | { type: 'DONE' };                              // Algoritmo finalizado

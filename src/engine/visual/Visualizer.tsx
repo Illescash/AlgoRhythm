@@ -1,8 +1,9 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { eventBus } from '../../core/eventBus';
+import { HIGHLIGHT_MS } from '../../lib/timing';
 
 export interface VisualizerHandle {
-    swap: (i: number, j: number) => void;
+    set: (index: number, value: number) => void;
     initialize: () => void;
     highlight: (indices: number[], color: string) => void;
 }
@@ -48,14 +49,7 @@ export const Visualizer = forwardRef<VisualizerHandle>((_, ref) => {
         return bar;
     };
 
-    const updateBarPosition = (index: number) => {
-        const bar = barsRef.current[index];
-        if (bar) {
-            bar.style.left = `calc(${index} * 100% / ${count})`;
-        }
-    };
-
-    const highlight = (indices: number[], color: string) => {
+const highlight = (indices: number[], color: string) => {
         indices.forEach(index => {
             const bar = barsRef.current[index];
             if (bar) {
@@ -65,7 +59,7 @@ export const Visualizer = forwardRef<VisualizerHandle>((_, ref) => {
                     if (barsRef.current[index]) {
                         barsRef.current[index]!.style.backgroundColor = DEFAULT_COLOR;
                     }
-                }, 300);
+                }, HIGHLIGHT_MS);
             }
         });
     };
@@ -86,20 +80,15 @@ export const Visualizer = forwardRef<VisualizerHandle>((_, ref) => {
         });
     };
 
-    const swap = (i: number, j: number) => {
-        if (i < 0 || i >= count || j < 0 || j >= count) return;
-        // 1. Intercambio en memoria
-        [dataRef.current[i], dataRef.current[j]] = [dataRef.current[j], dataRef.current[i]];
-        [barsRef.current[i], barsRef.current[j]] = [barsRef.current[j], barsRef.current[i]];
-
-        // 2. Actualización visual
-        updateBarPosition(i);
-        updateBarPosition(j);
+    const set = (index: number, value: number) => {
+        if (index < 0 || index >= count) return;
+        dataRef.current[index] = value;
+        const bar = barsRef.current[index];
+        if (bar) bar.style.height = `${value}%`;
     };
 
-    // Exponer métodos al padre a través de la referencia
     useImperativeHandle(ref, () => ({
-        swap,
+        set,
         initialize,
         highlight
     }));
@@ -110,8 +99,8 @@ export const Visualizer = forwardRef<VisualizerHandle>((_, ref) => {
         // Suscribirse al Bus de Eventos
         const unsubscribe = eventBus.subscribe((event) => {
             switch (event.type) {
-                case 'SWAP':
-                    swap(event.indices[0], event.indices[1]);
+                case 'SET':
+                    set(event.index, event.value);
                     break;
                 case 'COMPARE':
                     highlight(event.indices, COMPARE_COLOR);
