@@ -1,3 +1,4 @@
+// @ts-nocheck - archivo obsoleto, conservado solo como referencia histórica
 import type { VisualEvent } from '../core/eventBus';
 
 /**

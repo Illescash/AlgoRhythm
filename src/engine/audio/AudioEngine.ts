@@ -84,6 +84,14 @@ class AudioEngine {
             case 'DONE':
                 this.playEarcon();
                 break;
+
+            case 'FOUND':
+                this.playFoundEarcon();
+                break;
+
+            case 'NOT_FOUND':
+                this.playNotFoundEarcon();
+                break;
         }
     }
 
@@ -148,6 +156,48 @@ class AudioEngine {
 
             osc.start(now);
             osc.stop(now + 0.55);
+            osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        });
+    }
+
+    // Two ascending notes - confirmation that target was found
+    private playFoundEarcon() {
+        if (!this.ctx || !this.masterGain) return;
+        const notes = [523.25, 659.25]; // C5, E5 - ascendente
+        notes.forEach((freq, i) => {
+            const now = this.ctx!.currentTime + i * 0.14;
+            const osc = this.ctx!.createOscillator();
+            const gain = this.ctx!.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.exponentialRampToValueAtTime(0.5, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+            osc.connect(gain);
+            gain.connect(this.masterGain!);
+            osc.start(now);
+            osc.stop(now + 0.5);
+            osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        });
+    }
+
+    // Two descending notes - signals that target is not in the array
+    private playNotFoundEarcon() {
+        if (!this.ctx || !this.masterGain) return;
+        const notes = [220, 164.81]; // A3, E3 - descendente
+        notes.forEach((freq, i) => {
+            const now = this.ctx!.currentTime + i * 0.14;
+            const osc = this.ctx!.createOscillator();
+            const gain = this.ctx!.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.exponentialRampToValueAtTime(0.4, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+            osc.connect(gain);
+            gain.connect(this.masterGain!);
+            osc.start(now);
+            osc.stop(now + 0.5);
             osc.onended = () => { osc.disconnect(); gain.disconnect(); };
         });
     }

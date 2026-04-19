@@ -19,6 +19,12 @@ export const Visualizer = forwardRef<VisualizerHandle>((_, ref) => {
     const count = 50;
     const DEFAULT_COLOR = '#3b82f6';
     const COMPARE_COLOR = '#ef4444';
+    const RANGE_COLOR = '#f59e0b';
+    const DISCARDED_COLOR = '#1a2030';
+    const FOUND_COLOR = '#22c55e';
+
+    // Estado de búsqueda: qué barras están descartadas y cuál es el rango activo
+    const searchRangeRef = useRef<{ low: number; high: number } | null>(null);
 
     // --- Métodos de Ayuda (Encapsulación) ---
 
@@ -49,19 +55,55 @@ export const Visualizer = forwardRef<VisualizerHandle>((_, ref) => {
         return bar;
     };
 
-const highlight = (indices: number[], color: string) => {
+    // Devuelve el color "en reposo" de una barra según el estado de búsqueda activo
+    const getRestColor = (index: number): string => {
+        const range = searchRangeRef.current;
+        if (!range) return DEFAULT_COLOR;
+        if (index === range.low || index === range.high) return RANGE_COLOR;
+        if (index < range.low || index > range.high) return DISCARDED_COLOR;
+        return DEFAULT_COLOR;
+    };
+
+    const highlight = (indices: number[], color: string) => {
         indices.forEach(index => {
             const bar = barsRef.current[index];
             if (bar) {
                 bar.style.backgroundColor = color;
-                // Volver al color original después de un tiempo
                 setTimeout(() => {
                     if (barsRef.current[index]) {
-                        barsRef.current[index]!.style.backgroundColor = DEFAULT_COLOR;
+                        barsRef.current[index]!.style.backgroundColor = getRestColor(index);
                     }
                 }, HIGHLIGHT_MS);
             }
         });
+    };
+
+    const applyRange = (low: number, high: number) => {
+        searchRangeRef.current = { low, high };
+        barsRef.current.forEach((bar, i) => {
+            if (!bar) return;
+            if (i === low || i === high) bar.style.backgroundColor = RANGE_COLOR;
+            else if (i < low || i > high) bar.style.backgroundColor = DISCARDED_COLOR;
+            else bar.style.backgroundColor = DEFAULT_COLOR;
+        });
+    };
+
+    const markFound = (index: number) => {
+        searchRangeRef.current = null;
+        const bar = barsRef.current[index];
+        if (bar) bar.style.backgroundColor = FOUND_COLOR;
+    };
+
+    const flashNotFound = () => {
+        searchRangeRef.current = null;
+        barsRef.current.forEach(bar => {
+            if (bar) bar.style.backgroundColor = COMPARE_COLOR;
+        });
+        setTimeout(() => {
+            barsRef.current.forEach(bar => {
+                if (bar) bar.style.backgroundColor = DEFAULT_COLOR;
+            });
+        }, 400);
     };
 
     // --- Lógica Principal ---
@@ -69,6 +111,7 @@ const highlight = (indices: number[], color: string) => {
     const initialize = (data?: number[]) => {
         if (!containerRef.current) return;
 
+        searchRangeRef.current = null;
         clearContainer();
         containerRef.current.style.position = 'relative';
 
@@ -96,7 +139,6 @@ const highlight = (indices: number[], color: string) => {
     useEffect(() => {
         initialize();
 
-        // Suscribirse al Bus de Eventos
         const unsubscribe = eventBus.subscribe((event) => {
             switch (event.type) {
                 case 'SET':
@@ -107,6 +149,15 @@ const highlight = (indices: number[], color: string) => {
                     break;
                 case 'INITIALIZE':
                     initialize(event.data);
+                    break;
+                case 'RANGE':
+                    applyRange(event.low, event.high);
+                    break;
+                case 'FOUND':
+                    markFound(event.index);
+                    break;
+                case 'NOT_FOUND':
+                    flashNotFound();
                     break;
             }
         });
