@@ -25,7 +25,7 @@ const DEFAULT_SORT = 'quickSort';
 const DEFAULT_SEARCH = 'linear';
 
 type StartMessage =
-    | { type: 'START'; mode: 'sort';   data: number[]; algorithm?: string; cmpMs: number }
+    | { type: 'START'; mode: 'sort'; data: number[]; algorithm?: string; cmpMs: number }
     | { type: 'START'; mode: 'search'; data: number[]; algorithm?: string; target: number; cmpMs: number };
 
 type WorkerMessage = StartMessage | { type: 'CANCEL' };
@@ -41,25 +41,33 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
     setCancelled(false);
     setTimings(e.data.cmpMs);
 
-    const proxiedData = createDataProxy(e.data.data);
+    const { proxy, swap } = createDataProxy(e.data.data);
 
     try {
         if (e.data.mode === 'search') {
-            const algorithm = SEARCH_ALGORITHMS[e.data.algorithm ?? DEFAULT_SEARCH] ?? SEARCH_ALGORITHMS[DEFAULT_SEARCH];
+            const searchKey = e.data.algorithm ?? DEFAULT_SEARCH;
+            if (!SEARCH_ALGORITHMS[searchKey]) console.warn(`Unknown search algorithm "${searchKey}", falling back to "${DEFAULT_SEARCH}"`);
+            const algorithm = SEARCH_ALGORITHMS[searchKey] ?? SEARCH_ALGORITHMS[DEFAULT_SEARCH];
             const signal: SearchSignal = {
-                found:    (index) => self.postMessage({ type: 'FOUND', index } as VisualEvent),
-                notFound: ()      => self.postMessage({ type: 'NOT_FOUND' } as VisualEvent),
+                found: (index) => self.postMessage({ type: 'FOUND', index } as VisualEvent),
+                notFound: () => self.postMessage({ type: 'NOT_FOUND' } as VisualEvent),
                 setRange: (low, high) => self.postMessage({ type: 'RANGE', low, high } as VisualEvent),
             };
-            await algorithm.search(proxiedData, e.data.target, signal);
+            await algorithm.search(proxy, e.data.target, signal);
         } else {
-            const algorithm = SORT_ALGORITHMS[e.data.algorithm ?? DEFAULT_SORT] ?? SORT_ALGORITHMS[DEFAULT_SORT];
-            await algorithm.sort(proxiedData);
+            const sortKey = e.data.algorithm ?? DEFAULT_SORT;
+            if (!SORT_ALGORITHMS[sortKey]) console.warn(`Unknown sort algorithm "${sortKey}", falling back to "${DEFAULT_SORT}"`);
+            const algorithm = SORT_ALGORITHMS[sortKey] ?? SORT_ALGORITHMS[DEFAULT_SORT];
+            await algorithm.sort(proxy, swap);
             self.postMessage({ type: 'DONE' } as VisualEvent);
         }
     } catch (err) {
         if (err instanceof Error && err.message === 'CANCELLED') {
-            self.postMessage({ type: 'DONE' } as VisualEvent);
+            self.postMessage({ type: 'CANCELLED' } as VisualEvent);
+            return;
         }
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('[algorithm.worker] Error durante la ejecución:', err);
+        self.postMessage({ type: 'ERROR', message } as VisualEvent);
     }
 };

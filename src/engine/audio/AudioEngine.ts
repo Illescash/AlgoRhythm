@@ -35,11 +35,17 @@ class AudioEngine {
 
     // Called on user gesture (button click) - creates AudioContext and subscribes
     init(data: number[]) {
+        // Math.min/max sobre un array vacío devuelven ±Infinity y rompen valueToFreq.
+        // No tiene sentido inicializar sonificación sin datos: salimos temprano.
+        if (data.length === 0) {
+            console.warn('[AudioEngine] init() llamado con array vacío; se ignora.');
+            return;
+        }
         this.arrayData = [...data];
         this.dataMin = Math.min(...data);
         this.dataMax = Math.max(...data);
 
-        if (!this.ctx) {
+        if (!this.ctx || this.ctx.state === 'closed') {
             this.ctx = new AudioContext();
             this.masterGain = this.ctx.createGain();
             this.masterGain.gain.value = 0.12;
@@ -58,11 +64,12 @@ class AudioEngine {
 
     private handle(event: VisualEvent) {
         if (!this.enabled || !this.ctx || !this.masterGain) return;
+        if (this.ctx.state === 'closed') return;
         if (this.ctx.state === 'suspended') this.ctx.resume();
 
         switch (event.type) {
             case 'INITIALIZE':
-                if (event.data) {
+                if (event.data && event.data.length > 0) {
                     this.arrayData = [...event.data];
                     this.dataMin = Math.min(...event.data);
                     this.dataMax = Math.max(...event.data);
@@ -90,6 +97,21 @@ class AudioEngine {
             case 'NOT_FOUND':
                 this.playNotFoundEarcon();
                 break;
+
+            case 'RANGE':
+                break;
+
+            // al ERROR, el AudioEngine no suena nada; sólo lo enumeramos para el exhaustive check.
+            case 'ERROR':
+                break;
+            // al CANCELLED tampoco emitimos sonido (el earcon DONE sería engañoso).
+            case 'CANCELLED':
+                break;
+
+            default: {
+                const _exhaustiveCheck: never = event;
+                void _exhaustiveCheck;
+            }
         }
     }
 
@@ -122,15 +144,15 @@ class AudioEngine {
         gain.connect(panner);
         panner.connect(this.masterGain);
 
-        osc.start(now);
-        osc.stop(now + duration + 0.01);
-
-        // Disconnect all nodes on completion - critical to prevent node accumulation
-        osc.onended = () => {
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); panner.disconnect(); };
+        try {
+            osc.start(now);
+            osc.stop(now + duration + 0.01);
+        } catch {
             osc.disconnect();
             gain.disconnect();
             panner.disconnect();
-        };
+        }
     }
 
     // C major chord (C4-E4-G4) played as ascending arpeggio.
@@ -152,9 +174,9 @@ class AudioEngine {
             osc.connect(gain);
             gain.connect(this.masterGain!);
 
-            osc.start(now);
-            osc.stop(now + 0.55);
             osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+            try { osc.start(now); osc.stop(now + 0.55); }
+            catch { osc.disconnect(); gain.disconnect(); }
         });
     }
 
@@ -173,9 +195,9 @@ class AudioEngine {
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
             osc.connect(gain);
             gain.connect(this.masterGain!);
-            osc.start(now);
-            osc.stop(now + 0.5);
             osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+            try { osc.start(now); osc.stop(now + 0.5); }
+            catch { osc.disconnect(); gain.disconnect(); }
         });
     }
 
@@ -194,9 +216,9 @@ class AudioEngine {
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
             osc.connect(gain);
             gain.connect(this.masterGain!);
-            osc.start(now);
-            osc.stop(now + 0.5);
             osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+            try { osc.start(now); osc.stop(now + 0.5); }
+            catch { osc.disconnect(); gain.disconnect(); }
         });
     }
 

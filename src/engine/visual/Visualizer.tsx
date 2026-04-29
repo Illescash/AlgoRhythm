@@ -1,193 +1,334 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { eventBus } from '../../core/eventBus';
-import { HIGHLIGHT_MS } from '../../lib/timing';
+import { useStore } from '../../store';
 
-export interface VisualizerHandle {
-    set: (index: number, value: number) => void;
-    initialize: () => void;
-    highlight: (indices: number[], color: string) => void;
-}
+export function Visualizer() {
+    const wrapRef = useRef<HTMLDivElement>(null);
 
-export const Visualizer = forwardRef<VisualizerHandle>((_, ref) => {
-    // useRef: Referencia al contenedor interno ("Pista de baile")
-    const containerRef = useRef<HTMLDivElement>(null);
-    // useRef: "Memoria Silenciosa" - Guarda el array de datos sin provocar repintados
+    const barsRef = useRef<HTMLDivElement[]>([]);
     const dataRef = useRef<number[]>([]);
-    // useRef: "Hilos de Marioneta" - Guarda las referencias a los elementos HTML de las barras
-    const barsRef = useRef<(HTMLDivElement | null)[]>([]);
+    const rangeRef = useRef<{ low: number; high: number } | null>(null);
 
-    const count = 50;
-    const DEFAULT_COLOR = '#3b82f6';
-    const COMPARE_COLOR = '#ef4444';
-    const RANGE_COLOR = '#f59e0b';
-    const DISCARDED_COLOR = '#1a2030';
-    const FOUND_COLOR = '#22c55e';
+    const lowLabelRef = useRef<HTMLDivElement>(null);
+    const highLabelRef = useRef<HTMLDivElement>(null);
+    const bracketRef = useRef<HTMLDivElement>(null);
 
-    // Estado de búsqueda: qué barras están descartadas y cuál es el rango activo
-    const searchRangeRef = useRef<{ low: number; high: number } | null>(null);
+    const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+    const prevLengthRef = useRef(0);
 
-    // --- Métodos de Ayuda (Encapsulación) ---
+    const mode = useStore(s => s.mode);
+    const array = useStore(s => s.array);
+    const runState = useStore(s => s.runState);
+    const updateSearchConfig = useStore(s => s.updateSearchConfig);
+    const sortAlgo = useStore(s => s.sortConfig.algorithm);
+    const searchAlgo = useStore(s => s.searchConfig.algorithm);
+    const target = useStore(s => s.searchConfig.target);
 
-    const generateInitialData = () => {
-        return Array.from({ length: count }, () => Math.floor(Math.random() * 90) + 10);
+    const modeRef = useRef(mode);
+    modeRef.current = mode;
+
+    const runningRef = useRef(runState === 'running');
+    runningRef.current = runState === 'running';
+
+    const updateSearchConfigRef = useRef(updateSearchConfig);
+    updateSearchConfigRef.current = updateSearchConfig;
+
+    // duración del highlight calculada dinámicamente a partir de la config del store
+    // (cmpMs * highlightFactor). Antes se usaba una constante HIGHLIGHT_MS = WRITE_MS * 5 que
+    // hacía que el slider de highlightFactor no tuviera efecto. Vía ref para no recrear la
+    // suscripción al EventBus cada vez que cambia la config.
+    const cmpMs = useStore(s => s.sortConfig.cmpMs);
+    const highlightFactor = useStore(s => s.sortConfig.highlightFactor);
+    const highlightMsRef = useRef(cmpMs * highlightFactor);
+    highlightMsRef.current = cmpMs * highlightFactor;
+
+    const hideBracket = () => {
+        if (lowLabelRef.current) lowLabelRef.current.style.display = 'none';
+        if (highLabelRef.current) highLabelRef.current.style.display = 'none';
+        if (bracketRef.current) bracketRef.current.style.display = 'none';
     };
 
-    const clearContainer = () => {
-        if (containerRef.current) containerRef.current.innerHTML = '';
-        dataRef.current = [];
-        barsRef.current = [];
-    };
+    const showBracket = (low: number, high: number) => {
+        const n = dataRef.current.length;
+        if (!n) return;
+        const lowPct = ((low + 0.5) / n) * 100;
+        const highPct = ((high + 0.5) / n) * 100;
 
-    const createBar = (value: number, index: number) => {
-        if (!containerRef.current) return null;
-
-        const bar = document.createElement('div');
-        bar.style.position = 'absolute';
-        bar.style.bottom = '0';
-        bar.style.height = `${value}%`;
-        bar.style.width = `calc(100% / ${count} - 2px)`;
-        bar.style.left = `calc(${index} * 100% / ${count})`;
-        bar.style.backgroundColor = DEFAULT_COLOR;
-        bar.style.borderRadius = '4px 4px 0 0';
-        bar.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease';
-
-        containerRef.current.appendChild(bar);
-        return bar;
-    };
-
-    // Devuelve el color "en reposo" de una barra según el estado de búsqueda activo
-    const getRestColor = (index: number): string => {
-        const range = searchRangeRef.current;
-        if (!range) return DEFAULT_COLOR;
-        if (index === range.low || index === range.high) return RANGE_COLOR;
-        if (index < range.low || index > range.high) return DISCARDED_COLOR;
-        return DEFAULT_COLOR;
-    };
-
-    const highlight = (indices: number[], color: string) => {
-        indices.forEach(index => {
-            const bar = barsRef.current[index];
-            if (bar) {
-                bar.style.backgroundColor = color;
-                setTimeout(() => {
-                    if (barsRef.current[index]) {
-                        barsRef.current[index]!.style.backgroundColor = getRestColor(index);
-                    }
-                }, HIGHLIGHT_MS);
-            }
-        });
+        if (lowLabelRef.current) {
+            lowLabelRef.current.style.display = 'block';
+            lowLabelRef.current.style.left = `${lowPct}%`;
+        }
+        if (highLabelRef.current) {
+            highLabelRef.current.style.display = 'block';
+            highLabelRef.current.style.left = `${highPct}%`;
+        }
+        if (bracketRef.current) {
+            bracketRef.current.style.display = 'block';
+            bracketRef.current.style.left = `${Math.min(lowPct, highPct)}%`;
+            bracketRef.current.style.width = `${Math.abs(highPct - lowPct)}%`;
+        }
     };
 
     const applyRange = (low: number, high: number) => {
-        searchRangeRef.current = { low, high };
+        rangeRef.current = { low, high };
         barsRef.current.forEach((bar, i) => {
             if (!bar) return;
-            if (i === low || i === high) bar.style.backgroundColor = RANGE_COLOR;
-            else if (i < low || i > high) bar.style.backgroundColor = DISCARDED_COLOR;
-            else bar.style.backgroundColor = DEFAULT_COLOR;
+            bar.classList.remove('compare', 'range', 'discarded');
+            if (i === low || i === high) bar.classList.add('range');
+            else if (i < low || i > high) bar.classList.add('discarded');
         });
+        showBracket(low, high);
     };
 
-    const markFound = (index: number) => {
-        searchRangeRef.current = null;
-        const bar = barsRef.current[index];
-        if (bar) bar.style.backgroundColor = FOUND_COLOR;
-    };
-
-    const flashNotFound = () => {
-        searchRangeRef.current = null;
+    const clearRange = () => {
+        rangeRef.current = null;
         barsRef.current.forEach(bar => {
-            if (bar) bar.style.backgroundColor = COMPARE_COLOR;
+            bar?.classList.remove('compare', 'range', 'discarded');
         });
-        setTimeout(() => {
-            barsRef.current.forEach(bar => {
-                if (bar) bar.style.backgroundColor = DEFAULT_COLOR;
-            });
-        }, 400);
+        hideBracket();
     };
 
-    // --- Lógica Principal ---
+    const resetVisualState = () => {
+        clearRange();
+        barsRef.current.forEach(bar => bar?.classList.remove('found'));
+        wrapRef.current?.classList.remove('notfound-flash');
+    };
 
-    const initialize = (data?: number[]) => {
-        if (!containerRef.current) return;
+    // full rebuild solo si cambia la longitud; si solo cambian los valores
+    // (shuffle/reverse), actualiza alturas in-place para evitar flickering.
+    useEffect(() => {
+        const wrap = wrapRef.current;
+        if (!wrap) return;
 
-        searchRangeRef.current = null;
-        clearContainer();
-        containerRef.current.style.position = 'relative';
+        const n = array.length;
 
-        const initialData = data || generateInitialData();
-        initialData.forEach((value, i) => {
-            dataRef.current.push(value);
-            const bar = createBar(value, i);
+        if (n === prevLengthRef.current && barsRef.current.length === n) {
+            dataRef.current = [...array];
+            array.forEach((value, i) => {
+                if (barsRef.current[i]) barsRef.current[i].style.height = `${value}%`;
+            });
+            resetVisualState();
+            return;
+        }
+
+        prevLengthRef.current = n;
+        barsRef.current.forEach(b => b.remove());
+        barsRef.current = [];
+        dataRef.current = [...array];
+
+        array.forEach((value, i) => {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            bar.style.height = `${value}%`;
+            bar.style.width = `calc(100% / ${n} - 2px)`;
+            bar.style.left = `calc(${i} * 100% / ${n})`;
+            bar.dataset.idx = String(i);
+            bar.style.cursor = 'pointer';
+            // ARIA + soporte teclado
+            bar.setAttribute('role', 'button');
+            bar.setAttribute('tabindex', '0');
+            bar.setAttribute('aria-label', `Bar ${i + 1}, value ${value}`);
+
+            const handlePick = () => {
+                if (modeRef.current !== 'search' || runningRef.current) return;
+                const v = dataRef.current[Number(bar.dataset.idx)];
+                if (typeof v === 'number') {
+                    updateSearchConfigRef.current({ target: v });
+                    bar.animate(
+                        [
+                            { boxShadow: '0 0 16px rgba(129,140,248,0.9)', transform: 'scaleY(1.05)' },
+                            { boxShadow: '0 0 0 rgba(129,140,248,0)', transform: 'scaleY(1)' },
+                        ],
+                        { duration: 260, easing: 'ease-out' }
+                    );
+                }
+            };
+
+            bar.addEventListener('click', handlePick);
+            bar.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handlePick(); }
+            });
+
+            wrap.appendChild(bar);
             barsRef.current.push(bar);
         });
-    };
 
-    const set = (index: number, value: number) => {
-        if (index < 0 || index >= count) return;
-        dataRef.current[index] = value;
-        const bar = barsRef.current[index];
-        if (bar) bar.style.height = `${value}%`;
-    };
+        resetVisualState();
+        // resetVisualState sólo opera sobre refs; estable en la práctica.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [array]);
 
-    useImperativeHandle(ref, () => ({
-        set,
-        initialize,
-        highlight
-    }));
-
+    // Al empezar una ejecución, limpia los restos de la ejecución previa.
     useEffect(() => {
-        initialize();
+        if (runState === 'running') resetVisualState();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [runState]);
 
-        const unsubscribe = eventBus.subscribe((event) => {
-            switch (event.type) {
-                case 'SET':
-                    set(event.index, event.value);
-                    break;
-                case 'COMPARE':
-                    highlight(event.indices, COMPARE_COLOR);
-                    break;
-                case 'INITIALIZE':
-                    initialize(event.data);
-                    break;
-                case 'RANGE':
-                    applyRange(event.low, event.high);
-                    break;
-                case 'FOUND':
-                    markFound(event.index);
-                    break;
-                case 'NOT_FOUND':
-                    flashNotFound();
-                    break;
+    // Tras un click-to-pick / entrada manual de target, resalta las barras cuyo valor coincide.
+    useEffect(() => {
+        if (mode !== 'search') return;
+        if (runState === 'running') return;
+        barsRef.current.forEach((bar, i) => {
+            if (!bar) return;
+            if (dataRef.current[i] === target) {
+                bar.style.boxShadow = '0 0 16px rgba(129,140,248,0.6), 0 0 0 1px rgba(129,140,248,0.8) inset';
+            } else {
+                bar.style.boxShadow = '';
             }
         });
+        return () => {
+            barsRef.current.forEach(b => { if (b) b.style.boxShadow = ''; });
+        };
+    }, [target, mode, runState, array]);
 
-        return () => unsubscribe();
+    // Suscripción al EventBus.
+    useEffect(() => {
+        const unsub = eventBus.subscribe(ev => {
+            switch (ev.type) {
+                case 'SET': {
+                    dataRef.current[ev.index] = ev.value;
+                    const bar = barsRef.current[ev.index];
+                    if (bar) bar.style.height = `${ev.value}%`;
+                    break;
+                }
+                case 'COMPARE': {
+                    ev.indices.forEach(i => {
+                        const bar = barsRef.current[i];
+                        if (!bar) return;
+                        bar.classList.add('compare');
+                        const id = setTimeout(() => {
+                            bar.classList.remove('compare');
+                            pendingTimersRef.current.delete(id);
+                        }, highlightMsRef.current);
+                        pendingTimersRef.current.add(id);
+                    });
+                    break;
+                }
+                case 'RANGE':
+                    applyRange(ev.low, ev.high);
+                    break;
+                case 'FOUND': {
+                    clearRange();
+                    const bar = barsRef.current[ev.index];
+                    if (bar) bar.classList.add('found');
+                    break;
+                }
+                case 'NOT_FOUND': {
+                    clearRange();
+                    wrapRef.current?.classList.add('notfound-flash');
+                    const nfId = setTimeout(() => {
+                        wrapRef.current?.classList.remove('notfound-flash');
+                        pendingTimersRef.current.delete(nfId);
+                    }, 400);
+                    pendingTimersRef.current.add(nfId);
+                    break;
+                }
+                case 'INITIALIZE':
+                    break;
+                // limpiar bracket L/H si llega DONE sin FOUND/NOT_FOUND previo
+                case 'DONE':
+                    hideBracket();
+                    break;
+                // el Visualizer no reacciona visualmente al ERROR (lo gestiona runner.tsx);
+                // sólo lo enumeramos para mantener el exhaustive check.
+                case 'ERROR':
+                    break;
+                // al CANCELLED limpiamos rango/bracket para no dejar restos visuales
+                // de una búsqueda interrumpida.
+                case 'CANCELLED':
+                    clearRange();
+                    break;
+
+                default: {
+                    const _exhaustiveCheck: never = ev;
+                    void _exhaustiveCheck;
+                }
+            }
+        });
+        const timers = pendingTimersRef.current;
+        return () => {
+            unsub();
+            // cancelar todos los timeouts pendientes al desmontar
+            timers.forEach(id => clearTimeout(id));
+            timers.clear();
+        };
+        // applyRange / clearRange / hideBracket sólo operan sobre refs; suscripción única.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const algoName = mode === 'sort' ? sortAlgo : searchAlgo;
+
     return (
-        <div className="w-full h-full flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                    <h3 className="text-lg font-medium text-slate-200">Visualización en Tiempo Real</h3>
-                    <p className="text-xs text-slate-400">Motor de renderizado manual (DOM Directo)</p>
+        <div className="relative w-full h-full overflow-hidden"
+            style={{ background: 'radial-gradient(1000px 500px at 80% -10%, rgba(99,102,241,0.08), transparent 60%), var(--bg-1)' }}>
+            {/* Grid decorativa */}
+            <div className="absolute inset-0 pointer-events-none"
+                style={{
+                    backgroundImage:
+                        'linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px), ' +
+                        'linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px)',
+                    backgroundSize: '48px 48px',
+                    maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 90%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 90%)',
+                }}
+            />
+
+            {/* Header info */}
+            <div className="absolute top-3 left-4 right-4 flex items-center justify-between pointer-events-none z-[2]">
+                <div className="text-[11px] tracking-[0.1em] uppercase mono"
+                    style={{ color: 'var(--text-2)' }}>
+                    {mode === 'sort' ? 'SORTING' : 'SEARCHING'} · <span style={{ color: 'var(--text-1)' }}>{algoName}</span>
+                </div>
+                <div className="flex items-center gap-2 mono text-[11px] tracking-wider"
+                    style={{
+                        color: 'var(--text-1)',
+                        border: '1px solid var(--line)',
+                        background: 'rgba(10,14,26,0.7)',
+                        padding: '4px 10px',
+                        borderRadius: '999px',
+                        backdropFilter: 'blur(4px)',
+                    }}>
+                    <span className="inline-block w-[6px] h-[6px] rounded-full"
+                        style={{
+                            background: runState === 'running' ? 'var(--indigo)' : runState === 'found' ? 'var(--green)' : runState === 'notFound' ? 'var(--red)' : 'var(--text-3)',
+                            boxShadow: runState === 'running' ? '0 0 8px var(--indigo)' : undefined,
+                            animation: runState === 'running' ? 'pulse 1.6s infinite' : undefined,
+                        }} />
+                    {runState.toUpperCase()}
                 </div>
             </div>
 
-            <div className="flex-1 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden relative group shadow-2xl flex items-end p-6">
+            {/* Zona de barras */}
+            <div className="absolute left-0 right-0"
+                style={{ top: 40, bottom: 24 }}>
+                {/* L / H labels + bracket */}
+                <div ref={lowLabelRef} className="range-label" style={{ display: 'none', top: 2 }}>L</div>
+                <div ref={highLabelRef} className="range-label" style={{ display: 'none', top: 2 }}>H</div>
+                <div ref={bracketRef} className="range-bracket" style={{ display: 'none', top: 22 }} />
+
                 <div
-                    ref={containerRef}
-                    className="w-full h-full relative"
+                    ref={wrapRef}
+                    className="bars absolute left-4 right-4"
+                    style={{ top: 36, bottom: 0 }}
                 />
-                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </div>
 
-            <div className="flex justify-end px-2">
-                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Manual Engine v1.2</span>
+            {/* Baseline + label */}
+            <div className="absolute left-0 right-0 pointer-events-none"
+                style={{
+                    bottom: 24, height: 1,
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+                }} />
+            <div className="absolute bottom-1.5 left-4 text-[10px] tracking-[0.1em] uppercase mono"
+                style={{ color: 'var(--text-3)' }}>
+                Index →
             </div>
+            <div className="absolute bottom-1.5 right-4 text-[10px] tracking-[0.1em] uppercase mono"
+                style={{ color: 'var(--text-3)' }}>
+                Value ↑
+            </div>
+
+            <style>{`@keyframes pulse { 0%,100%{opacity: 1;} 50%{opacity: 0.35;} }`}</style>
         </div>
     );
-});
-
-Visualizer.displayName = 'Visualizer';
-
+}

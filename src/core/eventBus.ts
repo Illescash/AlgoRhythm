@@ -5,7 +5,9 @@ export type VisualEvent =
     | { type: 'DONE' }                                     // Sort finalizado
     | { type: 'FOUND'; index: number }                     // Search: target localizado
     | { type: 'NOT_FOUND' }                                // Search: target no está en el array
-    | { type: 'RANGE'; low: number; high: number };        // Search: rango activo (binary/jump/interpolation)
+    | { type: 'RANGE'; low: number; high: number }        // Search: rango activo (binary/jump/interpolation)
+    | { type: 'ERROR'; message: string }                   // Fallo irrecuperable durante la ejecución del algoritmo
+    | { type: 'CANCELLED' };                               // Worker confirmó la cancelación solicitada por el usuario
 
 class EventBus {
     private listeners: ((event: VisualEvent) => void)[] = [];

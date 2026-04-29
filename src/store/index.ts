@@ -22,15 +22,32 @@ const defaultSearchConfig: SearchConfig = {
     waveform: 'sine',
 };
 
-function generateArray(size: number): number[] {
-    return Array.from({ length: size }, () => Math.floor(Math.random() * 90) + 10);
+// Simple seeded PRNG (mulberry32) - makes arrays reproducible when a seed is provided.
+function mulberry32(seed: number) {
+    return () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+    };
+}
+
+function generateArray(size: number, seed?: number): number[] {
+    const rand = seed !== undefined ? mulberry32(seed) : Math.random;
+    return Array.from({ length: size }, () => Math.floor(rand() * 90) + 10);
 }
 
 interface AppStore {
     mode: AppMode;
     runState: RunState;
+    // contador monotónico que identifica cada ejecución.
+    // Se incrementa en startSort / startSearch. Los consumidores (StatStrip) lo usan
+    // como dep para resetear métricas, evitando que un setRunState('running') -> 'running'
+    // deduplicado por Zustand impida el reset entre ejecuciones consecutivas.
+    runId: number;
     array: number[];
     searchResult: number | null;
+    errorMessage: string | null;
     sortConfig: SortConfig;
     searchConfig: SearchConfig;
 
@@ -41,15 +58,19 @@ interface AppStore {
     shuffleArray(): void;
     reverseArray(): void;
     sortArrayAsc(): void;
+    resizeArray(size: number): void;
     setRunState(state: RunState): void;
     setSearchResult(index: number | null): void;
+    bumpRunId(): void;
 }
 
 export const useStore = create<AppStore>((set, get) => ({
     mode: 'sort',
     runState: 'idle',
+    runId: 0,
     array: generateArray(DEFAULT_ARRAY_SIZE),
     searchResult: null,
+    errorMessage: null,
     sortConfig: defaultSortConfig,
     searchConfig: defaultSearchConfig,
 
@@ -64,19 +85,37 @@ export const useStore = create<AppStore>((set, get) => ({
     setArray: (array) => set({ array }),
 
     shuffleArray: () => {
-        const size = get().mode === 'sort'
-            ? get().sortConfig.arraySize
-            : get().searchConfig.arraySize;
-        set({ array: generateArray(size) });
+        // Conserva el tamaño actual del array - evita sorpresas al cambiar de modo.
+        const size = get().array.length || DEFAULT_ARRAY_SIZE;
+        set({ array: generateArray(size), runState: 'idle', searchResult: null });
     },
 
     reverseArray: () =>
-        set(s => ({ array: [...s.array].sort((a, b) => b - a) })),
+        set(s => ({
+            array: [...s.array].sort((a, b) => b - a),
+            runState: 'idle',
+            searchResult: null,
+        })),
 
     sortArrayAsc: () =>
-        set(s => ({ array: [...s.array].sort((a, b) => a - b) })),
+        set(s => ({
+            array: [...s.array].sort((a, b) => a - b),
+            runState: 'idle',
+            searchResult: null,
+        })),
+
+    resizeArray: (size) =>
+        set(s => ({
+            array: generateArray(size),
+            sortConfig: { ...s.sortConfig, arraySize: size },
+            searchConfig: { ...s.searchConfig, arraySize: size },
+            runState: 'idle',
+            searchResult: null,
+        })),
 
     setRunState: (runState) => set({ runState }),
 
     setSearchResult: (searchResult) => set({ searchResult }),
+
+    bumpRunId: () => set(s => ({ runId: s.runId + 1 })),
 }));

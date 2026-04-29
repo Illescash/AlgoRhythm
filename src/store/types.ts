@@ -3,7 +3,7 @@ export type AppMode = 'sort' | 'search';
 export type SortAlgorithmKey = 'quickSort' | 'selectionSort' | 'mergeSort' | 'mergeSortInPlace';
 export type SearchAlgorithmKey = 'linear' | 'binary';
 
-export type RunState = 'idle' | 'running' | 'done' | 'found' | 'notFound' | 'cancelled';
+export type RunState = 'idle' | 'running' | 'done' | 'found' | 'notFound' | 'cancelled' | 'error';
 
 export interface SortConfig {
     algorithm: SortAlgorithmKey;

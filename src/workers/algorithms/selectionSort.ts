@@ -6,7 +6,7 @@ export const selectionSortAlgorithm: SortingAlgorithm = {
     sort: selectionSort,
 };
 
-async function selectionSort(array: number[]) {
+async function selectionSort(array: number[], swap: (i: number, j: number) => void) {
     const n = array.length;
 
     for (let i = 0; i < n - 1; i++) {
@@ -21,7 +21,7 @@ async function selectionSort(array: number[]) {
         }
 
         if (minIdx !== i) {
-            [array[i], array[minIdx]] = [array[minIdx], array[i]];
+            swap(i, minIdx);
             await sleepWRITE();
         }
     }
