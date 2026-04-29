@@ -19,6 +19,7 @@ export function SearchSidebar() {
     const updateSearchConfig = useStore(s => s.updateSearchConfig);
     const sortArrayAsc = useStore(s => s.sortArrayAsc);
     const shuffleArray = useStore(s => s.shuffleArray);
+    const resizeArray = useStore(s => s.resizeArray);
 
     const { startSearch, stop } = useRunner();
 
@@ -106,7 +107,18 @@ export function SearchSidebar() {
             </Section>
 
             <Section title="DATA" index="03">
-                <div className="grid grid-cols-2 gap-1.5">
+                <Slider
+                    label="Array size"
+                    value={searchConfig.arraySize}
+                    min={20}
+                    max={500}
+                    step={10}
+                    unit=" items"
+                    ticks={['small', 'large']}
+                    disabled={isRunning}
+                    onChange={v => resizeArray(v)}
+                />
+                <div className="grid grid-cols-2 gap-1.5 mt-2">
                     <MiniButton disabled={isRunning} onClick={shuffleArray} title="Array aleatorio">
                         ⟳ Shuffle
                     </MiniButton>
@@ -123,8 +135,8 @@ export function SearchSidebar() {
                     sub="CMP"
                     value={searchConfig.cmpMs}
                     min={5}
-                    max={80}
-                    step={1}
+                    max={600}
+                    step={5}
                     unit=" ms"
                     ticks={['fast', 'slow']}
                     disabled={isRunning}
