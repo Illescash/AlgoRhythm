@@ -81,6 +81,12 @@ class AudioEngine {
                 this.playGrain(event.indices[1], 0.018, this.waveform, 0.5);
                 break;
 
+            // PROBE inspecciona UNA posición (search lineal, countingSort). Mismo
+            // grano que medio COMPARE para mantener el "tick" auditivo por iteración.
+            case 'PROBE':
+                this.playGrain(event.index, 0.018, this.waveform, 0.5);
+                break;
+
             case 'SET':
                 this.arrayData[event.index] = event.value;
                 this.playGrain(event.index, 0.06, this.waveform, 1.0);
@@ -227,9 +233,13 @@ class AudioEngine {
     }
 
     setVolume(value: number) {
-        if (this.masterGain) {
-            this.masterGain.gain.value = Math.max(0, Math.min(1, value));
-        }
+        if (!this.ctx || !this.masterGain) return;
+        const v = Math.max(0, Math.min(1, value));
+        const now = this.ctx.currentTime;
+        const gain = this.masterGain.gain;
+        gain.cancelScheduledValues(now);
+        gain.setValueAtTime(gain.value, now);
+        gain.linearRampToValueAtTime(v, now + 0.02);
     }
 
     enable() {
@@ -240,6 +250,24 @@ class AudioEngine {
     disable() {
         this.enabled = false;
     }
+
+    // usado por el dispose de HMR (ver export del módulo). Libera la suscripción
+    // al EventBus para que un módulo recargado no acumule listeners fantasma.
+    teardown() {
+        if (this.unsubscribe) {
+            this.unsubscribe();
+            this.unsubscribe = null;
+        }
+        this.enabled = false;
+    }
 }
 
 export const audioEngine = new AudioEngine();
+
+// en HMR de Vite, al recargar este módulo el singleton previo deja una suscripción
+// fantasma en el EventBus. Llamamos a `unsubscribe` antes de que el módulo sea reemplazado.
+if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+        audioEngine.teardown();
+    });
+}

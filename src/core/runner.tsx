@@ -29,7 +29,7 @@ export function RunnerProvider({ children }: { children: ReactNode }) {
         const unsubscribe = eventBus.subscribe(event => {
             if (event.type === 'DONE') {
                 isRunningRef.current = false;
-                useStore.setState({ runState: 'done' });
+                useStore.setState({ runState: 'done', errorMessage: null });
             }
             if (event.type === 'FOUND') {
                 isRunningRef.current = false;

@@ -13,11 +13,10 @@ async function selectionSort(array: number[], swap: (i: number, j: number) => vo
         let minIdx = i;
 
         for (let j = i + 1; j < n; j++) {
+            await sleepCMP();
             if (array[j] < array[minIdx]) {
                 minIdx = j;
             }
-
-            await sleepCMP();
         }
 
         if (minIdx !== i) {

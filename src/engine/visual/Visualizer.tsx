@@ -195,13 +195,42 @@ export function Visualizer() {
                     ev.indices.forEach(i => {
                         const bar = barsRef.current[i];
                         if (!bar) return;
+                        // si una barra está marcada como range/discarded y se compara,
+                        // limpiamos esas clases para evitar combinaciones CSS conflictivas.
+                        bar.classList.remove('range', 'discarded');
                         bar.classList.add('compare');
                         const id = setTimeout(() => {
                             bar.classList.remove('compare');
+                            // Reaplicar range/discarded al expirar el highlight si la barra sigue
+                            // dentro del rango activo (binary/jump/interpolation aún en curso).
+                            const r = rangeRef.current;
+                            if (r) {
+                                if (i === r.low || i === r.high) bar.classList.add('range');
+                                else if (i < r.low || i > r.high) bar.classList.add('discarded');
+                            }
                             pendingTimersRef.current.delete(id);
                         }, highlightMsRef.current);
                         pendingTimersRef.current.add(id);
                     });
+                    break;
+                }
+                case 'PROBE': {
+                    // una sola barra resaltada por iteración (search, countingSort).
+                    const bar = barsRef.current[ev.index];
+                    if (!bar) break;
+                    bar.classList.remove('range', 'discarded');
+                    bar.classList.add('compare');
+                    const idx = ev.index;
+                    const id = setTimeout(() => {
+                        bar.classList.remove('compare');
+                        const r = rangeRef.current;
+                        if (r) {
+                            if (idx === r.low || idx === r.high) bar.classList.add('range');
+                            else if (idx < r.low || idx > r.high) bar.classList.add('discarded');
+                        }
+                        pendingTimersRef.current.delete(id);
+                    }, highlightMsRef.current);
+                    pendingTimersRef.current.add(id);
                     break;
                 }
                 case 'RANGE':

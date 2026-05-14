@@ -1,4 +1,4 @@
-import { createDataProxy } from './dataProxy';
+import { createDataProxy, createSearchProxy } from './dataProxy';
 import { setTimings, setCancelled } from './sleep';
 import type { SortingAlgorithm, SearchAlgorithm, SearchSignal } from './algorithms/types';
 import type { VisualEvent } from '../core/eventBus';
@@ -55,10 +55,11 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
     setCancelled(false);
     setTimings(e.data.cmpMs);
 
-    const { proxy, swap } = createDataProxy(e.data.data);
-
     try {
         if (e.data.mode === 'search') {
+            // en modo search usamos un proxy específico que emite PROBE (un solo índice)
+            // por cada lectura, en lugar de COMPARE pareado (heurística del DataProxy de sort).
+            const { proxy } = createSearchProxy(e.data.data);
             const searchKey = e.data.algorithm ?? DEFAULT_SEARCH;
             if (!SEARCH_ALGORITHMS[searchKey]) console.warn(`Unknown search algorithm "${searchKey}", falling back to "${DEFAULT_SEARCH}"`);
             const algorithm = SEARCH_ALGORITHMS[searchKey] ?? SEARCH_ALGORITHMS[DEFAULT_SEARCH];
@@ -69,10 +70,24 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
             };
             await algorithm.search(proxy, e.data.target, signal);
         } else {
+            const source = e.data.data;
+            const { proxy, swap } = createDataProxy(source);
+            // `probe(i)` para sorts con lecturas solitarias (countingSort). Emite PROBE
+            // y devuelve el valor leído directamente del array subyacente, evitando los
+            // COMPARE espurios que produciría el GET trap del DataProxy.
+            const probe = (i: number) => {
+                self.postMessage({ type: 'PROBE', index: i } as VisualEvent);
+                return source[i];
+            };
+            // helper para emitir COMPARE explícito cuando la comparación real ocurre
+            // sobre buffers locales (mergeSort), no sobre el proxy.
+            const compare = (i: number, j: number) => {
+                self.postMessage({ type: 'COMPARE', indices: [i, j] } as VisualEvent);
+            };
             const sortKey = e.data.algorithm ?? DEFAULT_SORT;
             if (!SORT_ALGORITHMS[sortKey]) console.warn(`Unknown sort algorithm "${sortKey}", falling back to "${DEFAULT_SORT}"`);
             const algorithm = SORT_ALGORITHMS[sortKey] ?? SORT_ALGORITHMS[DEFAULT_SORT];
-            await algorithm.sort(proxy, swap);
+            await algorithm.sort(proxy, swap, probe, compare);
             self.postMessage({ type: 'DONE' } as VisualEvent);
         }
     } catch (err) {

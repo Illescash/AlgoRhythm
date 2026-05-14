@@ -1,6 +1,7 @@
 export type VisualEvent =
     | { type: 'SET'; index: number; value: number }        // Escritura individual al array
     | { type: 'COMPARE'; indices: [number, number] }       // Comparación de dos posiciones
+    | { type: 'PROBE'; index: number }                     // Inspección de una sola posición (search / single-read en sort)
     | { type: 'INITIALIZE'; data?: number[] }              // Carga inicial de datos
     | { type: 'DONE' }                                     // Sort finalizado
     | { type: 'FOUND'; index: number }                     // Search: target localizado

@@ -5,6 +5,10 @@ export interface DataProxy {
     swap(i: number, j: number): void;
 }
 
+export interface SearchProxy {
+    proxy: number[];
+}
+
 /**
  * Crea un Proxy que intercepta accesos al array y emite eventos visuales.
  *
@@ -60,4 +64,24 @@ export function createDataProxy(array: number[]): DataProxy {
     }
 
     return { proxy, swap };
+}
+
+/**
+ * Variante para algoritmos de búsqueda: cada lectura emite un evento PROBE con un único
+ * índice (el algoritmo lee una sola posición y la compara contra `target`). No empareja
+ * lecturas consecutivas como COMPARE y no expone `swap` (los search no escriben).
+ */
+export function createSearchProxy(array: number[]): SearchProxy {
+    const proxy = new Proxy(array, {
+        get(target, prop) {
+            const value = Reflect.get(target, prop);
+            const index = Number(prop);
+            if (!isNaN(index)) {
+                self.postMessage({ type: 'PROBE', index } as VisualEvent);
+            }
+            return value;
+        }
+    });
+
+    return { proxy };
 }

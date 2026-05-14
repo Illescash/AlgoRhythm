@@ -15,12 +15,14 @@ async function quickSort(array: number[], swap: (i: number, j: number) => void, 
 }
 
 async function partition(array: number[], swap: (i: number, j: number) => void, low: number, high: number): Promise<number> {
-    const pivot = array[high];
     let i = low - 1;
 
     for (let j = low; j < high; j++) {
         await sleepCMP();
-        if (array[j] <= pivot) {
+        // comparamos releyendo `array[high]` en cada iteración (en vez de capturar
+        // el pivote en una constante). Así el DataProxy empareja correctamente j con high
+        // y el visualizador muestra la barra actual junto al pivote, no a su predecesora.
+        if (array[j] <= array[high]) {
             i++;
             if (i !== j) {
                 swap(i, j);
@@ -29,7 +31,9 @@ async function partition(array: number[], swap: (i: number, j: number) => void, 
         }
     }
 
-    swap(i + 1, high);
-    await sleepWRITE();
+    if (i + 1 !== high) {
+        swap(i + 1, high);
+        await sleepWRITE();
+    }
     return i + 1;
 }

@@ -4,12 +4,11 @@ import { useStore } from '../../store';
 
 interface Stats {
     compares: number;
-    reads: number;
     writes: number;
     elapsed: number; // ms
 }
 
-const ZERO: Stats = { compares: 0, reads: 0, writes: 0, elapsed: 0 };
+const ZERO: Stats = { compares: 0, writes: 0, elapsed: 0 };
 
 // Hook que acumula métricas mientras el motor corre.
 function useStats() {
@@ -51,20 +50,21 @@ function useStats() {
     }, [runState, runId]);
 
     // Suscripción al EventBus - acumula en un ref y hace flush 1x/frame con RAF.
-    const accRef = useRef({ compares: 0, reads: 0, writes: 0 });
+    const accRef = useRef({ compares: 0, writes: 0 });
     useEffect(() => {
         const acc = accRef.current;
         let flushRaf: number | null = null;
 
         const flush = () => {
             flushRaf = null;
-            const { compares, reads, writes } = acc;
-            acc.compares = 0; acc.reads = 0; acc.writes = 0;
-            setStats(s => ({ ...s, compares: s.compares + compares, reads: s.reads + reads, writes: s.writes + writes }));
+            const { compares, writes } = acc;
+            acc.compares = 0; acc.writes = 0;
+            setStats(s => ({ ...s, compares: s.compares + compares, writes: s.writes + writes }));
         };
 
         const unsub = eventBus.subscribe(ev => {
-            if (ev.type === 'COMPARE') { acc.compares++; acc.reads += 2; }
+            // PROBE cuenta como una comparación (target/valor externo vs array[i]).
+            if (ev.type === 'COMPARE' || ev.type === 'PROBE') { acc.compares++; }
             else if (ev.type === 'SET') { acc.writes++; }
             else return;
             if (flushRaf === null) flushRaf = requestAnimationFrame(flush);
@@ -79,7 +79,6 @@ function useStats() {
     // Descartar eventos pendientes al iniciar una nueva ejecución para que no contaminen sus métricas.
     useEffect(() => {
         accRef.current.compares = 0;
-        accRef.current.reads = 0;
         accRef.current.writes = 0;
     }, [runId]);
 

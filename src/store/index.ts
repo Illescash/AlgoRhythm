@@ -74,7 +74,7 @@ export const useStore = create<AppStore>((set, get) => ({
     sortConfig: defaultSortConfig,
     searchConfig: defaultSearchConfig,
 
-    setMode: (mode) => set({ mode, runState: 'idle', searchResult: null }),
+    setMode: (mode) => set({ mode, runState: 'idle', searchResult: null, errorMessage: null }),
 
     updateSortConfig: (patch) =>
         set(s => ({ sortConfig: { ...s.sortConfig, ...patch } })),
