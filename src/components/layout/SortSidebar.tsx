@@ -6,10 +6,15 @@ import {
 } from '../ui/controls';
 
 const SORT_OPTIONS: { id: SortAlgorithmKey; label: string; complexity: string }[] = [
-    { id: 'quickSort',        label: 'Quick Sort',     complexity: 'O(n log n) avg' },
+    { id: 'bubbleSort',       label: 'Bubble Sort',    complexity: 'O(n²)' },
+    { id: 'insertionSort',    label: 'Insertion Sort', complexity: 'O(n²)' },
     { id: 'selectionSort',    label: 'Selection Sort', complexity: 'O(n²)' },
+    { id: 'shellSort',        label: 'Shell Sort',     complexity: 'O(n log² n)' },
     { id: 'mergeSort',        label: 'Merge Sort',     complexity: 'O(n log n)' },
-    { id: 'mergeSortInPlace', label: 'Merge In-Place', complexity: 'O(n²) write' },
+    { id: 'mergeSortInPlace', label: 'Merge In-Place', complexity: 'O(n log n)' },
+    { id: 'heapSort',         label: 'Heap Sort',      complexity: 'O(n log n)' },
+    { id: 'quickSort',        label: 'Quick Sort',     complexity: 'O(n log n) avg' },
+    { id: 'countingSort',     label: 'Counting Sort',  complexity: 'O(n + k)' },
 ];
 
 export function SortSidebar() {

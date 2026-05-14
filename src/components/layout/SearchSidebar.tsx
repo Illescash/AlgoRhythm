@@ -6,8 +6,10 @@ import {
 } from '../ui/controls';
 
 const SEARCH_OPTIONS: { id: SearchAlgorithmKey; label: string; complexity: string }[] = [
-    { id: 'linear', label: 'Linear Search', complexity: 'O(n)' },
-    { id: 'binary', label: 'Binary Search', complexity: 'O(log n) · sorted' },
+    { id: 'linear',        label: 'Linear Search',        complexity: 'O(n)' },
+    { id: 'jump',          label: 'Jump Search',          complexity: 'O(√n) · sorted' },
+    { id: 'binary',        label: 'Binary Search',        complexity: 'O(log n) · sorted' },
+    { id: 'interpolation', label: 'Interpolation Search', complexity: 'O(log log n) · sorted' },
 ];
 
 export function SearchSidebar() {
@@ -46,10 +48,10 @@ export function SearchSidebar() {
                     disabled={isRunning}
                     onChange={v => updateSearchConfig({ algorithm: v })}
                 />
-                {searchConfig.algorithm === 'binary' && (
+                {(searchConfig.algorithm === 'binary' || searchConfig.algorithm === 'jump' || searchConfig.algorithm === 'interpolation') && (
                     <p className="mt-2 text-[11px] leading-snug"
                        style={{ color: 'var(--text-2)' }}>
-                        Binary Search requires a <span style={{ color: 'var(--amber)' }}>sorted array</span>. Use <strong className="mono">SORT ↑</strong> below before running.
+                        {searchConfig.algorithm === 'binary' ? 'Binary' : searchConfig.algorithm === 'jump' ? 'Jump' : 'Interpolation'} Search requires a <span style={{ color: 'var(--amber)' }}>sorted array</span>. Use <strong className="mono">SORT ↑</strong> below before running.
                     </p>
                 )}
             </Section>

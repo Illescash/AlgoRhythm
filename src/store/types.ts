@@ -1,7 +1,7 @@
 export type AppMode = 'sort' | 'search';
 
-export type SortAlgorithmKey = 'quickSort' | 'selectionSort' | 'mergeSort' | 'mergeSortInPlace';
-export type SearchAlgorithmKey = 'linear' | 'binary';
+export type SortAlgorithmKey = 'quickSort' | 'selectionSort' | 'mergeSort' | 'mergeSortInPlace' | 'bubbleSort' | 'insertionSort' | 'heapSort' | 'shellSort' | 'countingSort';
+export type SearchAlgorithmKey = 'linear' | 'binary' | 'jump' | 'interpolation';
 
 export type RunState = 'idle' | 'running' | 'done' | 'found' | 'notFound' | 'cancelled' | 'error';
 

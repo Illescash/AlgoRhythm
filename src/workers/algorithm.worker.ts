@@ -6,19 +6,33 @@ import { selectionSortAlgorithm } from './algorithms/selectionSort';
 import { quickSortAlgorithm } from './algorithms/quickSort';
 import { mergeSortAlgorithm } from './algorithms/mergeSort';
 import { mergeSortInPlaceAlgorithm } from './algorithms/mergeSortInPlace';
+import { bubbleSortAlgorithm } from './algorithms/bubbleSort';
+import { insertionSortAlgorithm } from './algorithms/insertionSort';
+import { heapSortAlgorithm } from './algorithms/heapSort';
+import { shellSortAlgorithm } from './algorithms/shellSort';
+import { countingSortAlgorithm } from './algorithms/countingSort';
 import { linearSearchAlgorithm } from './algorithms/linearSearch';
 import { binarySearchAlgorithm } from './algorithms/binarySearch';
+import { jumpSearchAlgorithm } from './algorithms/jumpSearch';
+import { interpolationSearchAlgorithm } from './algorithms/interpolationSearch';
 
 const SORT_ALGORITHMS: Record<string, SortingAlgorithm> = {
     selectionSort: selectionSortAlgorithm,
     quickSort: quickSortAlgorithm,
     mergeSort: mergeSortAlgorithm,
     mergeSortInPlace: mergeSortInPlaceAlgorithm,
+    bubbleSort: bubbleSortAlgorithm,
+    insertionSort: insertionSortAlgorithm,
+    heapSort: heapSortAlgorithm,
+    shellSort: shellSortAlgorithm,
+    countingSort: countingSortAlgorithm,
 };
 
 const SEARCH_ALGORITHMS: Record<string, SearchAlgorithm> = {
     linear: linearSearchAlgorithm,
     binary: binarySearchAlgorithm,
+    jump: jumpSearchAlgorithm,
+    interpolation: interpolationSearchAlgorithm,
 };
 
 const DEFAULT_SORT = 'quickSort';
