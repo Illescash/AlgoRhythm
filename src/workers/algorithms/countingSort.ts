@@ -10,6 +10,7 @@ async function countingSort(
     array: number[],
     swap: (i: number, j: number) => void,
     probe: (i: number) => number,
+    compare: (i: number, j: number) => void,
 ) {
     const n = array.length;
 
@@ -39,6 +40,9 @@ async function countingSort(
                 srcIdx++;
             }
             if (srcIdx !== writeIdx && srcIdx < n) {
+                // anunciar el swap. La PROBE mas reciente esta en srcIdx; writeIdx
+                // nunca aparecio en un evento -> sin esto, su barra se redimensiona silenciosa.
+                compare(writeIdx, srcIdx);
                 swap(writeIdx, srcIdx);
                 await sleepWRITE();
             }

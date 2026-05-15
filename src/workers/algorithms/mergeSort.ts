@@ -37,8 +37,17 @@ async function merge(
     // arrays planos y no emitían ningún evento, dejando el merge visualmente mudo.
     const leftArr = new Array<number>(leftN);
     const rightArr = new Array<number>(rightN);
-    for (let p = 0; p < leftN; p++) leftArr[p] = probe(left + p);
-    for (let p = 0; p < rightN; p++) rightArr[p] = probe(mid + 1 + p);
+    // cada probe va precedido de `await sleepCMP()` para que el barrido de copia se vea
+    // en el tiempo en lugar de emitir N eventos sincronos que iluminan medio array de golpe.
+    // Hace visible el coste O(n) de memoria extra del merge sort (rasgo distintivo del algoritmo).
+    for (let p = 0; p < leftN; p++) {
+        await sleepCMP();
+        leftArr[p] = probe(left + p);
+    }
+    for (let p = 0; p < rightN; p++) {
+        await sleepCMP();
+        rightArr[p] = probe(mid + 1 + p);
+    }
 
     let i = 0, j = 0, k = left;
 

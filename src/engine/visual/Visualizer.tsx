@@ -158,9 +158,18 @@ export function Visualizer() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [array]);
 
-    // Al empezar una ejecución, limpia los restos de la ejecución previa.
+    // la vista es la fuente de verdad del array. Al empezar limpia restos visuales;
+    // al terminar/parar persiste `dataRef.current` (estado real visible tras todos los SETs)
+    // al store. Asi worker y store quedan sincronizados y la siguiente ejecucion arranca
+    // sobre el array que el usuario esta viendo (no sobre el original previo al cancel).
     useEffect(() => {
-        if (runState === 'running') resetVisualState();
+        if (runState === 'running') {
+            resetVisualState();
+            return;
+        }
+        if (dataRef.current.length) {
+            useStore.getState().setArray([...dataRef.current]);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [runState]);
 
