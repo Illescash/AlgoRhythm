@@ -71,6 +71,7 @@ export function RunnerProvider({ children }: { children: ReactNode }) {
             data: [...state.array],
             algorithm: state.sortConfig.algorithm,
             cmpMs: state.sortConfig.cmpMs,
+            ...(state.sortConfig.algorithm === 'custom' ? { customCode: state.customSortCode } : {}),
         });
     };
 

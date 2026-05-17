@@ -4,6 +4,19 @@ import type { AppMode, RunState, SortConfig, SearchConfig } from './types';
 
 const DEFAULT_ARRAY_SIZE = 50;
 
+export const DEFAULT_CUSTOM_SORT_CODE = `// API: array, swap(i, j), await sleepCMP(), await sleepWRITE()
+
+for (let i = 0; i < array.length; i++) {
+  for (let j = 0; j < array.length - i - 1; j++) {
+    await sleepCMP();
+    if (array[j] > array[j + 1]) {
+      swap(j, j + 1);
+      await sleepWRITE();
+    }
+  }
+}
+`;
+
 const defaultSortConfig: SortConfig = {
     algorithm: 'quickSort',
     arraySize: DEFAULT_ARRAY_SIZE,
@@ -50,6 +63,7 @@ interface AppStore {
     errorMessage: string | null;
     sortConfig: SortConfig;
     searchConfig: SearchConfig;
+    customSortCode: string;
 
     setMode(mode: AppMode): void;
     updateSortConfig(patch: Partial<SortConfig>): void;
@@ -62,6 +76,7 @@ interface AppStore {
     setRunState(state: RunState): void;
     setSearchResult(index: number | null): void;
     bumpRunId(): void;
+    setCustomSortCode(code: string): void;
 }
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -73,6 +88,7 @@ export const useStore = create<AppStore>((set, get) => ({
     errorMessage: null,
     sortConfig: defaultSortConfig,
     searchConfig: defaultSearchConfig,
+    customSortCode: DEFAULT_CUSTOM_SORT_CODE,
 
     setMode: (mode) => set({ mode, runState: 'idle', searchResult: null, errorMessage: null }),
 
@@ -118,4 +134,6 @@ export const useStore = create<AppStore>((set, get) => ({
     setSearchResult: (searchResult) => set({ searchResult }),
 
     bumpRunId: () => set(s => ({ runId: s.runId + 1 })),
+
+    setCustomSortCode: (customSortCode) => set({ customSortCode }),
 }));

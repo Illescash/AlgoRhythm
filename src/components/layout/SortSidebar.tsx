@@ -15,6 +15,7 @@ const SORT_OPTIONS: { id: SortAlgorithmKey; label: string; complexity: string }[
     { id: 'heapSort',         label: 'Heap Sort',      complexity: 'O(n log n)' },
     { id: 'quickSort',        label: 'Quick Sort',     complexity: 'O(n log n) avg' },
     { id: 'countingSort',     label: 'Counting Sort',  complexity: 'O(n + k)' },
+    { id: 'custom',           label: 'Custom',         complexity: 'your code' },
 ];
 
 export function SortSidebar() {

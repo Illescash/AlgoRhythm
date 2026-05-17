@@ -1,5 +1,5 @@
 import { createDataProxy, createSearchProxy } from './dataProxy';
-import { setTimings, setCancelled } from './sleep';
+import { setTimings, setCancelled, sleepCMP, sleepWRITE } from './sleep';
 import type { SortingAlgorithm, SearchAlgorithm, SearchSignal } from './algorithms/types';
 import type { VisualEvent } from '../core/eventBus';
 import { selectionSortAlgorithm } from './algorithms/selectionSort';
@@ -39,8 +39,12 @@ const DEFAULT_SORT = 'quickSort';
 const DEFAULT_SEARCH = 'linear';
 
 type StartMessage =
-    | { type: 'START'; mode: 'sort'; data: number[]; algorithm?: string; cmpMs: number }
+    | { type: 'START'; mode: 'sort'; data: number[]; algorithm?: string; cmpMs: number; customCode?: string }
     | { type: 'START'; mode: 'search'; data: number[]; algorithm?: string; target: number; cmpMs: number };
+
+const AsyncFunction = Object.getPrototypeOf(async function () { /* */ }).constructor as new (
+    ...args: string[]
+) => (...injected: unknown[]) => Promise<void>;
 
 type WorkerMessage = StartMessage | { type: 'CANCEL' };
 
@@ -85,9 +89,14 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
                 self.postMessage({ type: 'COMPARE', indices: [i, j] } as VisualEvent);
             };
             const sortKey = e.data.algorithm ?? DEFAULT_SORT;
-            if (!SORT_ALGORITHMS[sortKey]) console.warn(`Unknown sort algorithm "${sortKey}", falling back to "${DEFAULT_SORT}"`);
-            const algorithm = SORT_ALGORITHMS[sortKey] ?? SORT_ALGORITHMS[DEFAULT_SORT];
-            await algorithm.sort(proxy, swap, probe, compare);
+            if (sortKey === 'custom') {
+                const userSort = new AsyncFunction('array', 'swap', 'sleepCMP', 'sleepWRITE', e.data.customCode ?? '');
+                await userSort(proxy, swap, sleepCMP, sleepWRITE);
+            } else {
+                if (!SORT_ALGORITHMS[sortKey]) console.warn(`Unknown sort algorithm "${sortKey}", falling back to "${DEFAULT_SORT}"`);
+                const algorithm = SORT_ALGORITHMS[sortKey] ?? SORT_ALGORITHMS[DEFAULT_SORT];
+                await algorithm.sort(proxy, swap, probe, compare);
+            }
             self.postMessage({ type: 'DONE' } as VisualEvent);
         }
     } catch (err) {
