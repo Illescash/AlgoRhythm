@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useStore } from '../../store';
 import { useRunner } from '../../core/runner';
 import type { SortAlgorithmKey } from '../../store/types';
 import {
     Section, AlgoSelector, Slider, WaveformSelector, MiniButton, RunButton,
 } from '../ui/controls';
+import { CustomAlgorithmEditor } from '../editor/CustomAlgorithmEditor';
 
 const SORT_OPTIONS: { id: SortAlgorithmKey; label: string; complexity: string }[] = [
     { id: 'bubbleSort',       label: 'Bubble Sort',    complexity: 'O(n²)' },
@@ -30,6 +32,8 @@ export function SortSidebar() {
 
     const { startSort, stop } = useRunner();
 
+    const [editorOpen, setEditorOpen] = useState(false);
+
     const buttonState = isRunning
         ? 'running'
         : runState === 'done'
@@ -47,6 +51,13 @@ export function SortSidebar() {
                     disabled={isRunning}
                     onChange={v => updateSortConfig({ algorithm: v })}
                 />
+                {sortConfig.algorithm === 'custom' && (
+                    <div className="mt-2">
+                        <MiniButton disabled={isRunning} onClick={() => setEditorOpen(true)} title="Editar el algoritmo personalizado">
+                            ✎ Edit code
+                        </MiniButton>
+                    </div>
+                )}
             </Section>
 
             <Section title="DATA" index="02">
@@ -130,6 +141,8 @@ export function SortSidebar() {
                     labelDone="DONE · RUN AGAIN"
                 />
             </div>
+
+            {editorOpen && <CustomAlgorithmEditor onClose={() => setEditorOpen(false)} />}
         </div>
     );
 }
