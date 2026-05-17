@@ -107,6 +107,7 @@ export function SortSidebar() {
                     step={1}
                     unit="%"
                     display={`${Math.round(sortConfig.volume * 100)}`}
+                    disabled={isRunning}
                     onChange={v => updateSortConfig({ volume: v / 100 })}
                 />
                 <div className="mb-1.5 mono text-[10px] tracking-[0.14em] uppercase"
@@ -115,6 +116,7 @@ export function SortSidebar() {
                 </div>
                 <WaveformSelector
                     value={sortConfig.waveform}
+                    disabled={isRunning}
                     onChange={v => updateSortConfig({ waveform: v })}
                 />
             </Section>

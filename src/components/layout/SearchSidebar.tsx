@@ -155,6 +155,7 @@ export function SearchSidebar() {
                     step={1}
                     unit="%"
                     display={`${Math.round(searchConfig.volume * 100)}`}
+                    disabled={isRunning}
                     onChange={v => updateSearchConfig({ volume: v / 100 })}
                 />
                 <div className="mb-1.5 mono text-[10px] tracking-[0.14em] uppercase"
@@ -163,6 +164,7 @@ export function SearchSidebar() {
                 </div>
                 <WaveformSelector
                     value={searchConfig.waveform}
+                    disabled={isRunning}
                     onChange={v => updateSearchConfig({ waveform: v })}
                 />
             </Section>
