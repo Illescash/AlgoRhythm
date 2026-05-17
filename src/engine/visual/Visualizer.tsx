@@ -15,6 +15,10 @@ export function Visualizer() {
 
     const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
     const prevLengthRef = useRef(0);
+    // marca que el siguiente disparo de useEffect([array]) proviene del commit
+    // programatico de useEffect([runState]) tras un RUN. En ese caso no debe limpiarse el
+    // estado visual (la clase `found` recien aniadida por el handler FOUND se perderia).
+    const skipNextResetRef = useRef(false);
 
     const mode = useStore(s => s.mode);
     const array = useStore(s => s.array);
@@ -107,7 +111,12 @@ export function Visualizer() {
             array.forEach((value, i) => {
                 if (barsRef.current[i]) barsRef.current[i].style.height = `${value}%`;
             });
-            resetVisualState();
+            // si el cambio de array viene del commit programatico tras un RUN
+            // (useEffect[runState]), no limpiamos el estado visual para preservar la clase
+            // `found` recien aniadida por el handler FOUND. En cambio del usuario (shuffle/
+            // reverse/sortAsc/resize), el flag esta a false y si reseteamos.
+            if (!skipNextResetRef.current) resetVisualState();
+            skipNextResetRef.current = false;
             return;
         }
 
@@ -168,6 +177,9 @@ export function Visualizer() {
             return;
         }
         if (dataRef.current.length) {
+            // marcamos que el siguiente useEffect[array] viene de este commit
+            // programatico, para que no limpie las clases visuales (especialmente `found`).
+            skipNextResetRef.current = true;
             useStore.getState().setArray([...dataRef.current]);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
